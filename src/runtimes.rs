@@ -18,13 +18,8 @@ use codec::Encode;
 use sp_runtime::{
     generic::Header,
     impl_opaque_keys,
-    traits::{
-        BlakeTwo256,
-        IdentifyAccount,
-        Verify,
-    },
-    MultiSignature,
-    OpaqueExtrinsic,
+    traits::{BlakeTwo256, IdentifyAccount, Verify},
+    MultiSignature, OpaqueExtrinsic,
 };
 use sp_std::prelude::*;
 
@@ -39,12 +34,7 @@ pub struct Babe;
 /// These are redefined here to avoid dependencies on the substrate creates where they are defined.
 /// They must be identical to the definitions in the target substrate version.
 pub mod app {
-    use application_crypto::{
-        app_crypto,
-        ed25519,
-        key_types,
-        sr25519,
-    };
+    use application_crypto::{app_crypto, ed25519, key_types, sr25519};
 
     /// Authority discovery app crypto types
     pub mod authority_discovery {
@@ -139,15 +129,9 @@ impl_opaque_keys! {
 }
 
 use crate::{
-    extrinsic::{
-        DefaultExtra,
-        SignedExtra,
-    },
+    extrinsic::{DefaultExtra, SignedExtra},
     frame::{
-        balances::{
-            AccountData,
-            Balances,
-        },
+        balances::{AccountData, Balances},
         contracts::Contracts,
         session::Session,
         staking::Staking,
@@ -186,7 +170,7 @@ impl System for DefaultNodeRuntime {
     type Hash = sp_core::H256;
     type Hashing = BlakeTwo256;
     type AccountId = <<MultiSignature as Verify>::Signer as IdentifyAccount>::AccountId;
-    type Address = pallet_indices::address::Address<Self::AccountId, u32>;
+    type Address = sp_runtime::MultiAddress<Self::AccountId, ()>;
     type Header = Header<Self::BlockNumber, BlakeTwo256>;
     type Extrinsic = OpaqueExtrinsic;
     type AccountData = AccountData<<Self as Balances>::Balance>;

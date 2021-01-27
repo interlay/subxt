@@ -14,21 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with substrate-subxt.  If not, see <http://www.gnu.org/licenses/>.
 
-use jsonrpsee::{
-    client::RequestError,
-    transport::ws::WsNewDnsError,
-};
+use jsonrpsee::{client::RequestError, transport::ws::WsNewDnsError};
 use sp_core::crypto::SecretStringError;
-use sp_runtime::{
-    transaction_validity::TransactionValidityError,
-    DispatchError,
-};
+use sp_runtime::{transaction_validity::TransactionValidityError, DispatchError};
 use thiserror::Error;
 
-use crate::metadata::{
-    Metadata,
-    MetadataError,
-};
+use crate::metadata::{Metadata, MetadataError};
 
 /// Error enum.
 #[derive(Debug, Error)]
@@ -104,6 +95,12 @@ pub enum RuntimeError {
     /// Cannot lookup.
     #[error("Cannot lookup some information required to validate the transaction.")]
     CannotLookup,
+    /// Consumer remaining.
+    #[error("At least one consumer is remaining so the account cannot be destroyed.")]
+    ConsumerRemaining,
+    /// No providers.
+    #[error("There are no providers so the account cannot be created.")]
+    NoProviders,
     /// Other error.
     #[error("Other error: {0}")]
     Other(String),
@@ -111,10 +108,7 @@ pub enum RuntimeError {
 
 impl RuntimeError {
     /// Converts a `DispatchError` into a subxt error.
-    pub fn from_dispatch(
-        metadata: &Metadata,
-        error: DispatchError,
-    ) -> Result<Self, Error> {
+    pub fn from_dispatch(metadata: &Metadata, error: DispatchError) -> Result<Self, Error> {
         match error {
             DispatchError::Module {
                 index,
@@ -130,6 +124,8 @@ impl RuntimeError {
             }
             DispatchError::BadOrigin => Ok(Self::BadOrigin),
             DispatchError::CannotLookup => Ok(Self::CannotLookup),
+            DispatchError::ConsumerRemaining => Ok(Self::ConsumerRemaining),
+            DispatchError::NoProviders => Ok(Self::NoProviders),
             DispatchError::Other(msg) => Ok(Self::Other(msg.into())),
         }
     }
