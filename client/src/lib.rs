@@ -21,26 +21,51 @@
 use async_std::task;
 use futures::{
     channel::mpsc,
-    compat::{Compat01As03, Sink01CompatExt, Stream01CompatExt},
-    future::{select, FutureExt},
+    compat::{
+        Compat01As03,
+        Sink01CompatExt,
+        Stream01CompatExt,
+    },
+    future::{
+        select,
+        FutureExt,
+    },
     sink::SinkExt,
     stream::StreamExt,
 };
 use futures01::sync::mpsc as mpsc01;
 use jsonrpsee::{
-    common::{Request, Response},
+    common::{
+        Request,
+        Response,
+    },
     transport::TransportClient,
 };
 use sc_network::config::TransportConfig;
 pub use sc_service::{
-    config::{DatabaseConfig, KeystoreConfig},
+    config::{
+        DatabaseConfig,
+        KeystoreConfig,
+    },
     Error as ServiceError,
 };
 use sc_service::{
-    config::{NetworkConfiguration, TaskType, TelemetryEndpoints},
-    ChainSpec, Configuration, RpcHandlers, RpcSession, TaskManager,
+    config::{
+        NetworkConfiguration,
+        TaskType,
+        TelemetryEndpoints,
+        WasmExecutionMethod,
+    },
+    ChainSpec,
+    Configuration,
+    RpcHandlers,
+    RpcSession,
+    TaskManager,
 };
-use std::{future::Future, pin::Pin};
+use std::{
+    future::Future,
+    pin::Pin,
+};
 use thiserror::Error;
 
 /// Error thrown by the client.
@@ -153,9 +178,11 @@ impl From<Role> for sc_service::Role {
     fn from(role: Role) -> Self {
         match role {
             Role::Light => Self::Light,
-            Role::Authority(_) => Self::Authority {
-                sentry_nodes: Default::default(),
-            },
+            Role::Authority(_) => {
+                Self::Authority {
+                    sentry_nodes: Default::default(),
+                }
+            }
         }
     }
 }
@@ -208,9 +235,11 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
             wasm_external_transport: None,
         };
         let telemetry_endpoints = if let Some(port) = self.telemetry {
-            let endpoints =
-                TelemetryEndpoints::new(vec![(format!("/ip4/127.0.0.1/tcp/{}/ws", port), 0)])
-                    .expect("valid config; qed");
+            let endpoints = TelemetryEndpoints::new(vec![(
+                format!("/ip4/127.0.0.1/tcp/{}/ws", port),
+                0,
+            )])
+            .expect("valid config; qed");
             Some(endpoints)
         } else {
             None
@@ -228,9 +257,11 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
             impl_version: self.impl_version.to_string(),
             chain_spec: Box::new(self.chain_spec),
             role: self.role.into(),
-            task_executor: (move |fut, ty| match ty {
-                TaskType::Async => task::spawn(fut),
-                TaskType::Blocking => task::spawn_blocking(|| task::block_on(fut)),
+            task_executor: (move |fut, ty| {
+                match ty {
+                    TaskType::Async => task::spawn(fut),
+                    TaskType::Blocking => task::spawn_blocking(|| task::block_on(fut)),
+                }
             })
             .into(),
             database: self.db,
@@ -258,7 +289,7 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
             tracing_receiver: Default::default(),
             tracing_targets: Default::default(),
             transaction_pool: Default::default(),
-            wasm_method: Default::default(),
+            wasm_method: WasmExecutionMethod::Compiled,
             base_path: Default::default(),
             informant_output_format: Default::default(),
         };
@@ -283,7 +314,10 @@ mod tests {
     use async_std::path::Path;
     use sp_keyring::AccountKeyring;
     use substrate_subxt::{
-        balances::TransferCallExt, ClientBuilder, KusamaRuntime as NodeTemplateRuntime, PairSigner,
+        balances::TransferCallExt,
+        ClientBuilder,
+        KusamaRuntime as NodeTemplateRuntime,
+        PairSigner,
     };
     use tempdir::TempDir;
 
@@ -307,9 +341,11 @@ mod tests {
     #[ignore]
     async fn test_light_client() {
         env_logger::try_init().ok();
-        let chain_spec_path = Path::new(env!("CARGO_MANIFEST_DIR")).join("dev-chain.json");
+        let chain_spec_path =
+            Path::new(env!("CARGO_MANIFEST_DIR")).join("dev-chain.json");
         let bytes = async_std::fs::read(chain_spec_path).await.unwrap();
-        let chain_spec = test_node::chain_spec::ChainSpec::from_json_bytes(bytes).unwrap();
+        let chain_spec =
+            test_node::chain_spec::ChainSpec::from_json_bytes(bytes).unwrap();
         let tmp = TempDir::new("subxt-").expect("failed to create tempdir");
         let config = SubxtClientConfig {
             // base_path:
@@ -327,7 +363,9 @@ mod tests {
             telemetry: None,
         };
         let client = ClientBuilder::<NodeTemplateRuntime>::new()
-            .set_client(SubxtClient::from_config(config, test_node::service::new_light).unwrap())
+            .set_client(
+                SubxtClient::from_config(config, test_node::service::new_light).unwrap(),
+            )
             .build()
             .await
             .unwrap();
@@ -358,7 +396,9 @@ mod tests {
             telemetry: None,
         };
         let client = ClientBuilder::<NodeTemplateRuntime>::new()
-            .set_client(SubxtClient::from_config(config, test_node::service::new_full).unwrap())
+            .set_client(
+                SubxtClient::from_config(config, test_node::service::new_full).unwrap(),
+            )
             .build()
             .await
             .unwrap();

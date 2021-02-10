@@ -17,15 +17,30 @@
 //! Service and ServiceFactory implementation. Specialized wrapper over substrate service.
 #![allow(clippy::type_complexity)]
 
-use sc_client_api::{ExecutorProvider, RemoteBackend};
+use sc_client_api::{
+    ExecutorProvider,
+    RemoteBackend,
+};
 use sc_executor::native_executor_instance;
 pub use sc_executor::NativeExecutor;
 use sc_finality_grandpa::SharedVoterState;
-use sc_service::{error::Error as ServiceError, Configuration, RpcHandlers, TaskManager};
+use sc_service::{
+    error::Error as ServiceError,
+    Configuration,
+    RpcHandlers,
+    TaskManager,
+};
 use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
 use sp_inherents::InherentDataProviders;
-use std::{sync::Arc, time::Duration};
-use test_node_runtime::{self, opaque::Block, RuntimeApi};
+use std::{
+    sync::Arc,
+    time::Duration,
+};
+use test_node_runtime::{
+    self,
+    opaque::Block,
+    RuntimeApi,
+};
 
 // Our native executor instance.
 native_executor_instance!(
@@ -116,7 +131,9 @@ pub fn new_partial(
 }
 
 /// Builds a new service for a full client.
-pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers), ServiceError> {
+pub fn new_full(
+    mut config: Configuration,
+) -> Result<(TaskManager, RpcHandlers), ServiceError> {
     let sc_service::PartialComponents {
         client,
         backend,
@@ -240,7 +257,8 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
             config: grandpa_config,
             link: grandpa_link,
             network,
-            telemetry_on_connect: telemetry_connection_notifier.map(|x| x.on_connect_stream()),
+            telemetry_on_connect: telemetry_connection_notifier
+                .map(|x| x.on_connect_stream()),
             voting_rule: sc_finality_grandpa::VotingRulesBuilder::default().build(),
             prometheus_registry,
             shared_voter_state: SharedVoterState::empty(),
@@ -259,9 +277,17 @@ pub fn new_full(mut config: Configuration) -> Result<(TaskManager, RpcHandlers),
 }
 
 /// Builds a new service for a light client.
-pub fn new_light(mut config: Configuration) -> Result<(TaskManager, RpcHandlers), ServiceError> {
-    let (client, backend, keystore_container, mut task_manager, on_demand, telemetry_span) =
-        sc_service::new_light_parts::<Block, RuntimeApi, Executor>(&config)?;
+pub fn new_light(
+    mut config: Configuration,
+) -> Result<(TaskManager, RpcHandlers), ServiceError> {
+    let (
+        client,
+        backend,
+        keystore_container,
+        mut task_manager,
+        on_demand,
+        telemetry_span,
+    ) = sc_service::new_light_parts::<Block, RuntimeApi, Executor>(&config)?;
 
     config
         .network

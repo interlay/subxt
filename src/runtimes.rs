@@ -18,8 +18,13 @@ use codec::Encode;
 use sp_runtime::{
     generic::Header,
     impl_opaque_keys,
-    traits::{BlakeTwo256, IdentifyAccount, Verify},
-    MultiSignature, OpaqueExtrinsic,
+    traits::{
+        BlakeTwo256,
+        IdentifyAccount,
+        Verify,
+    },
+    MultiSignature,
+    OpaqueExtrinsic,
 };
 use sp_std::prelude::*;
 
@@ -34,7 +39,12 @@ pub struct Babe;
 /// These are redefined here to avoid dependencies on the substrate creates where they are defined.
 /// They must be identical to the definitions in the target substrate version.
 pub mod app {
-    use application_crypto::{app_crypto, ed25519, key_types, sr25519};
+    use application_crypto::{
+        app_crypto,
+        ed25519,
+        key_types,
+        sr25519,
+    };
 
     /// Authority discovery app crypto types
     pub mod authority_discovery {
@@ -129,9 +139,15 @@ impl_opaque_keys! {
 }
 
 use crate::{
-    extrinsic::{DefaultExtra, SignedExtra},
+    extrinsic::{
+        DefaultExtra,
+        SignedExtra,
+    },
     frame::{
-        balances::{AccountData, Balances},
+        balances::{
+            AccountData,
+            Balances,
+        },
         contracts::Contracts,
         session::Session,
         staking::Staking,

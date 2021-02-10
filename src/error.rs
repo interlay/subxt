@@ -14,12 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with substrate-subxt.  If not, see <http://www.gnu.org/licenses/>.
 
-use jsonrpsee::{client::RequestError, transport::ws::WsNewDnsError};
+use jsonrpsee::{
+    client::RequestError,
+    transport::ws::WsNewDnsError,
+};
 use sp_core::crypto::SecretStringError;
-use sp_runtime::{transaction_validity::TransactionValidityError, DispatchError};
+use sp_runtime::{
+    transaction_validity::TransactionValidityError,
+    DispatchError,
+};
 use thiserror::Error;
 
-use crate::metadata::{Metadata, MetadataError};
+use crate::metadata::{
+    Metadata,
+    MetadataError,
+};
 
 /// Error enum.
 #[derive(Debug, Error)]
@@ -108,7 +117,10 @@ pub enum RuntimeError {
 
 impl RuntimeError {
     /// Converts a `DispatchError` into a subxt error.
-    pub fn from_dispatch(metadata: &Metadata, error: DispatchError) -> Result<Self, Error> {
+    pub fn from_dispatch(
+        metadata: &Metadata,
+        error: DispatchError,
+    ) -> Result<Self, Error> {
         match error {
             DispatchError::Module {
                 index,
