@@ -270,7 +270,7 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
             announce_block: true,
             dev_key_seed: self.role.into(),
             telemetry_endpoints,
-
+            telemetry_span: Default::default(),
             telemetry_external_transport: Default::default(),
             default_heap_pages: Default::default(),
             disable_grandpa: Default::default(),
