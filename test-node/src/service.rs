@@ -242,7 +242,7 @@ pub fn new_full(
         name: Some(name),
         observer_enabled: false,
         keystore,
-        is_authority: role.is_network_authority(),
+        is_authority: role.is_authority(),
     };
 
     if enable_grandpa {
