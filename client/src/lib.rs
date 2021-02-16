@@ -178,11 +178,7 @@ impl From<Role> for sc_service::Role {
     fn from(role: Role) -> Self {
         match role {
             Role::Light => Self::Light,
-            Role::Authority(_) => {
-                Self::Authority {
-                    sentry_nodes: Default::default(),
-                }
-            }
+            Role::Authority(_) => Self::Authority,
         }
     }
 }
