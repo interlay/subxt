@@ -528,7 +528,7 @@ impl<T: Runtime> Rpc<T> {
         let mut xt_sub = self.watch_extrinsic(extrinsic).await?;
 
         while let Some(status) = xt_sub.next().await {
-            // log::info!("received status {:?}", status);
+            log::info!("received status {:?}", status);
             match status {
                 // ignore in progress extrinsic for now
                 TransactionStatus::Future
