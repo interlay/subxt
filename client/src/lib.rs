@@ -79,7 +79,6 @@ use sc_service::{
     },
     ChainSpec,
     Configuration,
-    KeepBlocks,
     RpcHandlers,
     RpcSession,
     TaskManager,
@@ -413,11 +412,7 @@ impl From<Role> for sc_service::Role {
     fn from(role: Role) -> Self {
         match role {
             Role::Light => Self::Light,
-            Role::Authority(_) => {
-                Self::Authority {
-                    sentry_nodes: Default::default(),
-                }
-            }
+            Role::Authority(_) => Self::Authority,
         }
     }
 }
@@ -482,6 +477,13 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
             None
         };
         let service_config = Configuration {
+            keystore_remote: None,
+            state_pruning: sc_service::PruningMode::ArchiveAll,
+            keep_blocks: sc_service::KeepBlocks::All,
+            transaction_storage: sc_service::TransactionStorageMode::BlockBody,
+            wasm_runtime_overrides: None,
+            telemetry_handle: None,
+            disable_log_reloading: false,
             network,
             impl_name: self.impl_name.to_string(),
             impl_version: self.impl_version.to_string(),
@@ -500,17 +502,11 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
             announce_block: true,
             dev_key_seed: self.role.into(),
             telemetry_endpoints,
-
             telemetry_external_transport: Default::default(),
-            telemetry_handle: Default::default(),
-            telemetry_span: Default::default(),
             default_heap_pages: Default::default(),
             disable_grandpa: Default::default(),
-            disable_log_reloading: Default::default(),
             execution_strategies: Default::default(),
             force_authoring: Default::default(),
-            keep_blocks: KeepBlocks::All,
-            keystore_remote: Default::default(),
             offchain_worker: Default::default(),
             prometheus_config: Default::default(),
             rpc_cors: Default::default(),
@@ -527,9 +523,6 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
             wasm_method: self.wasm_method,
             base_path: Default::default(),
             informant_output_format: Default::default(),
-            state_pruning: Default::default(),
-            transaction_storage: sc_client_db::TransactionStorageMode::BlockBody,
-            wasm_runtime_overrides: Default::default(),
         };
 
         log::info!("{}", service_config.impl_name);

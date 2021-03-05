@@ -27,7 +27,6 @@ use sc_finality_grandpa::SharedVoterState;
 use sc_service::{
     error::Error as ServiceError,
     Configuration,
-    PartialComponents,
     RpcHandlers,
     TaskManager,
 };
@@ -140,7 +139,7 @@ pub fn new_partial(
 pub fn new_full(
     mut config: Configuration,
 ) -> Result<(TaskManager, RpcHandlers), ServiceError> {
-    let PartialComponents {
+    let sc_service::PartialComponents {
         client,
         backend,
         mut task_manager,
@@ -244,12 +243,13 @@ pub fn new_full(
     };
 
     let grandpa_config = sc_finality_grandpa::Config {
+        // FIXME #1578 make this available through chainspec
         gossip_duration: Duration::from_millis(333),
         justification_period: 512,
         name: Some(name),
         observer_enabled: false,
         keystore,
-        is_authority: role.is_network_authority(),
+        is_authority: role.is_authority(),
     };
 
     if enable_grandpa {
