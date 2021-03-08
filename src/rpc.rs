@@ -86,7 +86,7 @@ use crate::{
     },
     metadata::Metadata,
     runtimes::Runtime,
-    subscription::EventSubscription,
+    subscription::*,
 };
 
 pub type ChainBlock<T> =
@@ -171,6 +171,7 @@ pub enum RpcClient {
 }
 
 impl RpcClient {
+    /// Perform a request towards the server.
     pub async fn request<T: DeserializeOwned>(
         &self,
         method: &str,
@@ -186,6 +187,7 @@ impl RpcClient {
         }
     }
 
+    /// Send a subscription request to the server.
     pub async fn subscribe<T: DeserializeOwned>(
         &self,
         subscribe_method: &str,
@@ -440,7 +442,7 @@ impl<T: Runtime> Rpc<T> {
     /// Subscribe to substrate System Events
     pub async fn subscribe_events(
         &self,
-    ) -> Result<Subscription<StorageChangeSet<T::Hash>>, Error> {
+    ) -> Result<ImportedStorageSubscription<T>, Error> {
         let mut storage_key = twox_128(b"System").to_vec();
         storage_key.extend(twox_128(b"Events").to_vec());
         log::debug!("Events storage key {:?}", hex::encode(&storage_key));
@@ -452,7 +454,17 @@ impl<T: Runtime> Rpc<T> {
             .client
             .subscribe("state_subscribeStorage", params, "state_unsubscribeStorage")
             .await?;
-        Ok(subscription)
+        Ok(ImportedStorageSubscription(subscription))
+    }
+
+    /// Subscribe to finalized events.
+    pub async fn subscribe_finalized_events(
+        &self,
+    ) -> Result<FinalizedStorageSubscription<T>, Error> {
+        Ok(FinalizedStorageSubscription::new(
+            self.clone(),
+            self.subscribe_finalized_blocks().await?,
+        ))
     }
 
     /// Subscribe to blocks.
@@ -462,7 +474,7 @@ impl<T: Runtime> Rpc<T> {
             .subscribe(
                 "chain_subscribeNewHeads",
                 Params::None,
-                "chain_subscribeNewHeads",
+                "chain_unsubscribeNewHeads",
             )
             .await?;
 
@@ -478,7 +490,7 @@ impl<T: Runtime> Rpc<T> {
             .subscribe(
                 "chain_subscribeFinalizedHeads",
                 Params::None,
-                "chain_subscribeFinalizedHeads",
+                "chain_unsubscribeFinalizedHeads",
             )
             .await?;
         Ok(subscription)
@@ -524,7 +536,7 @@ impl<T: Runtime> Rpc<T> {
         let ext_hash = T::Hashing::hash_of(&extrinsic);
         log::info!("Submitting Extrinsic `{:?}`", ext_hash);
 
-        let events_sub = self.subscribe_events().await?;
+        let events_sub = self.subscribe_finalized_events().await?;
         let mut xt_sub = self.watch_extrinsic(extrinsic).await?;
 
         while let Some(status) = xt_sub.next().await {
@@ -533,8 +545,15 @@ impl<T: Runtime> Rpc<T> {
                 // ignore in progress extrinsic for now
                 TransactionStatus::Future
                 | TransactionStatus::Ready
-                | TransactionStatus::Broadcast(_) => continue,
-                TransactionStatus::InBlock(block_hash) => {
+                | TransactionStatus::Broadcast(_)
+                | TransactionStatus::InBlock(_) => continue,
+                TransactionStatus::Invalid => return Err("Extrinsic Invalid".into()),
+                TransactionStatus::Usurped(_) => return Err("Extrinsic Usurped".into()),
+                TransactionStatus::Dropped => return Err("Extrinsic Dropped".into()),
+                TransactionStatus::Retracted(_) => {
+                    return Err("Extrinsic Retracted".into())
+                }
+                TransactionStatus::Finalized(block_hash) => {
                     log::info!("Fetching block {:?}", block_hash);
                     let block = self.block(Some(block_hash)).await?;
                     return match block {
@@ -574,16 +593,6 @@ impl<T: Runtime> Rpc<T> {
                             Err(format!("Failed to find block {:?}", block_hash).into())
                         }
                     }
-                }
-                TransactionStatus::Invalid => return Err("Extrinsic Invalid".into()),
-                TransactionStatus::Usurped(_) => return Err("Extrinsic Usurped".into()),
-                TransactionStatus::Dropped => return Err("Extrinsic Dropped".into()),
-                TransactionStatus::Retracted(_) => {
-                    return Err("Extrinsic Retracted".into())
-                }
-                // should have made it `InBlock` before either of these
-                TransactionStatus::Finalized(_) => {
-                    return Err("Extrinsic Finalized".into())
                 }
                 TransactionStatus::FinalityTimeout(_) => {
                     return Err("Extrinsic FinalityTimeout".into())

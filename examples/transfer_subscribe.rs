@@ -37,7 +37,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client = ClientBuilder::<DefaultNodeRuntime>::new().build().await?;
     let sub = client.subscribe_events().await?;
     let decoder = client.events_decoder();
-    let mut sub = EventSubscription::<DefaultNodeRuntime>::new(sub, decoder);
+    let mut sub = EventSubscription::<DefaultNodeRuntime, _>::new(sub, decoder);
     sub.filter_event::<TransferEvent<_>>();
     client.transfer(&signer, &dest, 10_000).await?;
     let raw = sub.next().await.unwrap().unwrap();

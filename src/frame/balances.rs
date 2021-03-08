@@ -298,7 +298,7 @@ mod tests {
         let (client, _) = test_client().await;
         let sub = client.subscribe_events().await.unwrap();
         let decoder = client.events_decoder();
-        let mut sub = EventSubscription::<TestRuntime>::new(sub, &decoder);
+        let mut sub = EventSubscription::<TestRuntime, _>::new(sub, &decoder);
         sub.filter_event::<TransferEvent<_>>();
         client.transfer(&alice, &bob_addr, 10_000).await.unwrap();
         let raw = sub.next().await.unwrap().unwrap();

@@ -469,8 +469,16 @@ impl<T: Runtime> Client<T> {
     /// Subscribe to events.
     pub async fn subscribe_events(
         &self,
-    ) -> Result<Subscription<StorageChangeSet<T::Hash>>, Error> {
+    ) -> Result<ImportedStorageSubscription<T>, Error> {
         let events = self.rpc.subscribe_events().await?;
+        Ok(events)
+    }
+
+    /// Subscribe to finalized events.
+    pub async fn subscribe_finalized_events(
+        &self,
+    ) -> Result<FinalizedStorageSubscription<T>, Error> {
+        let events = self.rpc.subscribe_finalized_events().await?;
         Ok(events)
     }
 

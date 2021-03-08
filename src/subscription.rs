@@ -14,9 +14,21 @@
 // You should have received a copy of the GNU General Public License
 // along with substrate-subxt.  If not, see <http://www.gnu.org/licenses/>.
 
+use crate::rpc::Rpc;
+use core::{
+    future::Future,
+    pin::Pin,
+};
 use jsonrpsee_types::error::Error as RpcError;
 use jsonrpsee_ws_client::WsSubscription as Subscription;
-use sp_core::storage::StorageChangeSet;
+use sp_core::{
+    storage::{
+        StorageChangeSet,
+        StorageKey,
+    },
+    twox_128,
+};
+use sp_runtime::traits::Header;
 use std::collections::VecDeque;
 
 use crate::{
@@ -35,8 +47,8 @@ use crate::{
 
 /// Event subscription simplifies filtering a storage change set stream for
 /// events of interest.
-pub struct EventSubscription<'a, T: Runtime> {
-    subscription: Subscription<StorageChangeSet<T::Hash>>,
+pub struct EventSubscription<'a, T: Runtime, S: StorageChangeStream> {
+    subscription: S,
     decoder: &'a EventsDecoder<T>,
     block: Option<T::Hash>,
     extrinsic: Option<usize>,
@@ -45,12 +57,11 @@ pub struct EventSubscription<'a, T: Runtime> {
     finished: bool,
 }
 
-impl<'a, T: Runtime> EventSubscription<'a, T> {
+impl<'a, T: Runtime, S: StorageChangeStream<Item = StorageChangeSet<T::Hash>>>
+    EventSubscription<'a, T, S>
+{
     /// Creates a new event subscription.
-    pub fn new(
-        subscription: Subscription<StorageChangeSet<T::Hash>>,
-        decoder: &'a EventsDecoder<T>,
-    ) -> Self {
+    pub fn new(subscription: S, decoder: &'a EventsDecoder<T>) -> Self {
         Self {
             subscription,
             decoder,
@@ -130,5 +141,90 @@ impl<'a, T: Runtime> EventSubscription<'a, T> {
                 }
             }
         }
+    }
+}
+
+/// Stream storage set changes
+pub trait StorageChangeStream {
+    /// Type to return from next.
+    type Item;
+
+    /// Fetch the next storage item.
+    fn next<'a>(
+        &'a mut self,
+    ) -> Pin<Box<dyn Future<Output = Option<Self::Item>> + Send + 'a>>;
+}
+
+/// Wrapper over the normal storage subscription
+pub struct ImportedStorageSubscription<T: Runtime>(
+    pub(crate) Subscription<StorageChangeSet<T::Hash>>,
+);
+
+impl<T: Runtime> StorageChangeStream for ImportedStorageSubscription<T> {
+    type Item = StorageChangeSet<T::Hash>;
+
+    fn next<'a>(
+        &'a mut self,
+    ) -> Pin<Box<dyn Future<Output = Option<Self::Item>> + Send + 'a>> {
+        async fn run<T: Runtime>(
+            _self: &mut ImportedStorageSubscription<T>,
+        ) -> Option<StorageChangeSet<T::Hash>> {
+            _self.0.next().await
+        }
+
+        Box::pin(run(self))
+    }
+}
+
+/// Event subscription to only fetch finalized storage changes.
+pub struct FinalizedStorageSubscription<T: Runtime> {
+    rpc: Rpc<T>,
+    subscription: Subscription<T::Header>,
+    storage_changes: VecDeque<StorageChangeSet<T::Hash>>,
+    storage_key: StorageKey,
+}
+
+impl<T: Runtime> FinalizedStorageSubscription<T> {
+    /// Creates a new event subscription.
+    pub fn new(rpc: Rpc<T>, subscription: Subscription<T::Header>) -> Self {
+        let mut storage_key = twox_128(b"System").to_vec();
+        storage_key.extend(twox_128(b"Events").to_vec());
+        log::debug!("Events storage key {:?}", hex::encode(&storage_key));
+
+        Self {
+            rpc,
+            subscription,
+            storage_changes: Default::default(),
+            storage_key: StorageKey(storage_key),
+        }
+    }
+}
+
+impl<T: Runtime> StorageChangeStream for FinalizedStorageSubscription<T> {
+    type Item = StorageChangeSet<T::Hash>;
+
+    /// Gets the next event.
+    fn next<'a>(
+        &'a mut self,
+    ) -> Pin<Box<dyn Future<Output = Option<Self::Item>> + Send + 'a>> {
+        async fn run<T: Runtime>(
+            _self: &mut FinalizedStorageSubscription<T>,
+        ) -> Option<StorageChangeSet<T::Hash>> {
+            loop {
+                if let Some(storage_change) = _self.storage_changes.pop_front() {
+                    return Some(storage_change)
+                }
+                let header: T::Header = _self.subscription.next().await?;
+                if let Ok(storage_changes) = _self
+                    .rpc
+                    .query_storage_at(&[_self.storage_key.clone()], Some(header.hash()))
+                    .await
+                {
+                    _self.storage_changes.extend(storage_changes);
+                }
+            }
+        }
+
+        Box::pin(run(self))
     }
 }
