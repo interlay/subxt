@@ -36,7 +36,10 @@ use futures01::sync::mpsc as mpsc01;
 use jsonrpsee_types::{
     client::{
         FrontToBack,
+        NotificationMessage,
+        RequestMessage,
         Subscription,
+        SubscriptionMessage,
     },
     error::Error as JsonRpseeError,
     jsonrpc::{
@@ -109,7 +112,10 @@ impl SubxtClient {
                     let session = RpcSession::new(to_front.clone());
                     async move {
                         match message {
-                            FrontToBack::Notification { method, params } => {
+                            FrontToBack::Notification(NotificationMessage {
+                                method,
+                                params,
+                            }) => {
                                 let request =
                                     Request::Single(Call::Notification(Notification {
                                         jsonrpc: Version::V2,
@@ -121,11 +127,11 @@ impl SubxtClient {
                                 }
                             }
 
-                            FrontToBack::StartRequest {
+                            FrontToBack::StartRequest(RequestMessage {
                                 method,
                                 params,
                                 send_back,
-                            } => {
+                            }) => {
                                 let request =
                                     Request::Single(Call::MethodCall(MethodCall {
                                         jsonrpc: Version::V2,
@@ -153,18 +159,19 @@ impl SubxtClient {
                                         };
 
                                         send_back
+                                            .unwrap()
                                             .send(result)
                                             .expect("failed to send request response");
                                     }
                                 }
                             }
 
-                            FrontToBack::Subscribe {
+                            FrontToBack::Subscribe(SubscriptionMessage {
                                 subscribe_method,
                                 params,
                                 unsubscribe_method: _,
                                 send_back,
-                            } => {
+                            }) => {
                                 let request =
                                     Request::Single(Call::MethodCall(MethodCall {
                                         jsonrpc: Version::V2,
@@ -264,10 +271,10 @@ impl SubxtClient {
     {
         self.to_back
             .clone()
-            .send(FrontToBack::Notification {
+            .send(FrontToBack::Notification(NotificationMessage {
                 method: method.into(),
                 params: params.into(),
-            })
+            }))
             .await
             .map_err(|e| JsonRpseeError::TransportError(Box::new(e)))
     }
@@ -287,11 +294,11 @@ impl SubxtClient {
 
         self.to_back
             .clone()
-            .send(FrontToBack::StartRequest {
+            .send(FrontToBack::StartRequest(RequestMessage {
                 method: method.into(),
                 params: params.into(),
-                send_back: send_back_tx,
-            })
+                send_back: Some(send_back_tx),
+            }))
             .await
             .map_err(|e| JsonRpseeError::TransportError(Box::new(e)))?;
 
@@ -323,12 +330,12 @@ impl SubxtClient {
         let (send_back_tx, send_back_rx) = oneshot::channel();
         self.to_back
             .clone()
-            .send(FrontToBack::Subscribe {
+            .send(FrontToBack::Subscribe(SubscriptionMessage {
                 subscribe_method,
                 unsubscribe_method,
                 params,
                 send_back: send_back_tx,
-            })
+            }))
             .await
             .map_err(JsonRpseeError::Internal)?;
 
