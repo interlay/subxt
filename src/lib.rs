@@ -196,8 +196,8 @@ impl<T: Runtime> ClientBuilder<T> {
             if url.starts_with("ws://") || url.starts_with("wss://") {
                 let mut config = WsConfig::with_url(&url);
                 // max notifs per subscription capacity.
-                config.max_concurrent_requests_capacity = 4096;
-                RpcClient::WebSocket(WsClient::new(WsConfig::with_url(&url)).await?)
+                config.max_concurrent_requests = 4096;
+                RpcClient::WebSocket(WsClient::new(config).await?)
             } else {
                 let client = HttpClient::new(url, HttpConfig::default())?;
                 RpcClient::Http(Arc::new(client))
