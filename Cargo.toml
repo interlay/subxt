@@ -24,9 +24,9 @@ client = ["substrate-subxt-client"]
 log = "0.4.13"
 thiserror = "1.0.23"
 futures = "0.3.10"
-jsonrpsee-types = { git = "https://github.com/interlay/jsonrpsee", rev = "0ee62c3" }
-jsonrpsee-ws-client = { git = "https://github.com/interlay/jsonrpsee", rev = "0ee62c3" }
-jsonrpsee-http-client = { git = "https://github.com/interlay/jsonrpsee", rev = "0ee62c3" }
+jsonrpsee-types = { git = "https://github.com/interlay/jsonrpsee", rev = "81cd3ab" }
+jsonrpsee-ws-client = { git = "https://github.com/interlay/jsonrpsee", rev = "81cd3ab" }
+jsonrpsee-http-client = { git = "https://github.com/interlay/jsonrpsee", rev = "81cd3ab" }
 num-traits = { version = "0.2.14", default-features = false }
 serde = { version = "1.0.119", features = ["derive"] }
 serde_json = "1.0.61"
