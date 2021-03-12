@@ -88,6 +88,7 @@ pub use crate::{
     error::{
         Error,
         ModuleError,
+        RuntimeError,
     },
     events::{
         EventTypeRegistry,
