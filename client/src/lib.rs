@@ -390,7 +390,6 @@ impl SubxtClient {
             Ok(Err(err)) => return Err(err),
             Err(err) => return Err(JsonRpseeError::TransportError(Box::new(err))),
         };
-        let notifs_rx = notifs_rx.fuse();
         Ok(Subscription {
             to_back: self.to_back.clone(),
             notifs_rx,
