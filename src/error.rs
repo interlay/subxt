@@ -148,8 +148,6 @@ impl RuntimeError {
 #[derive(Clone, Debug, Eq, Error, PartialEq)]
 #[error("{error} from {module}")]
 pub struct ModuleError {
-    /// Module
     pub module: String,
-    /// Error
     pub error: String,
 }

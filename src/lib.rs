@@ -85,11 +85,7 @@ mod runtimes;
 mod subscription;
 
 pub use crate::{
-    error::{
-        Error,
-        ModuleError,
-        RuntimeError,
-    },
+    error::Error,
     events::{
         EventTypeRegistry,
         EventsDecoder,
@@ -212,7 +208,7 @@ impl<T: Runtime> ClientBuilder<T> {
             if url.starts_with("ws://") || url.starts_with("wss://") {
                 let mut config = WsConfig::with_url(&url);
                 config.max_notifs_per_subscription = 4096;
-                RpcClient::WebSocket(Arc::new(WsClient::new(config).await?))
+                RpcClient::WebSocket(WsClient::new(config).await?)
             } else {
                 let client = HttpClient::new(url, HttpConfig::default())?;
                 RpcClient::Http(Arc::new(client))
