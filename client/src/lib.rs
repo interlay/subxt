@@ -40,30 +40,27 @@ use futures::{
 };
 use futures01::sync::mpsc as mpsc01;
 use jsonrpsee_types::{
-    error::Error as JsonRpseeError,
-    to_json_value,
-    v2::{
-        error::JsonRpcErrorAlloc,
-        params::{
-            Id,
-            JsonRpcParams,
-            SubscriptionId,
-        },
-        request::{
-            JsonRpcCallSer,
-            JsonRpcNotificationSer,
-        },
-        response::{
-            JsonRpcNotifResponse,
-            JsonRpcResponse,
-        },
+    client::{
+        FrontToBack,
+        NotificationMessage,
+        RequestMessage,
+        Subscription,
+        SubscriptionMessage,
     },
-    DeserializeOwned,
-    FrontToBack,
-    JsonValue,
-    RequestMessage,
-    Subscription,
-    SubscriptionMessage,
+    error::Error as JsonRpseeError,
+    jsonrpc::{
+        self,
+        Call,
+        DeserializeOwned,
+        Id,
+        MethodCall,
+        Notification,
+        Output,
+        Request,
+        SubscriptionId,
+        SubscriptionNotif,
+        Version,
+    },
 };
 use sc_network::config::TransportConfig;
 pub use sc_service::{
@@ -109,7 +106,6 @@ pub enum SubxtClientError {
 #[derive(Clone)]
 pub struct SubxtClient {
     to_back: mpsc::Sender<FrontToBack>,
-    request_id: Arc<RwLock<u64>>,
 }
 
 impl SubxtClient {
@@ -117,51 +113,71 @@ impl SubxtClient {
     pub fn new(mut task_manager: TaskManager, rpc: RpcHandlers) -> Self {
         let (to_back, from_front) = mpsc::channel(DEFAULT_CHANNEL_SIZE);
 
-        let subscriptions = Arc::new(RwLock::new(HashMap::<u64, (u64, String)>::new()));
+        let request_id = Arc::new(RwLock::new(u64::MIN));
+        let subscriptions = Arc::new(RwLock::new(HashMap::<u64, String>::new()));
 
         task::spawn(
             select(
-                Box::pin(
-                    from_front.for_each(move |message: FrontToBack| {
-                        let rpc = rpc.clone();
-                        let (to_front, from_back) = mpsc01::channel(DEFAULT_CHANNEL_SIZE);
-                        let session = RpcSession::new(to_front.clone());
+                Box::pin(from_front.for_each(move |message: FrontToBack| {
+                    let rpc = rpc.clone();
+                    let (to_front, from_back) = mpsc01::channel(DEFAULT_CHANNEL_SIZE);
+                    let session = RpcSession::new(to_front.clone());
 
-                        let subscriptions = subscriptions.clone();
+                    let request_id = request_id.clone();
+                    let subscriptions = subscriptions.clone();
 
-                        async move {
-                            match message {
-                                FrontToBack::Batch(_) => {
-                                    unimplemented!()
-                                }
+                    async move {
+                        let request_id = {
+                            let mut request_id = request_id.write().await;
+                            *request_id = request_id.wrapping_add(1);
+                            *request_id
+                        };
 
-                                FrontToBack::Notification(message) => {
+                        match message {
+                            FrontToBack::Notification(NotificationMessage {
+                                method,
+                                params,
+                            }) => {
+                                let request =
+                                    Request::Single(Call::Notification(Notification {
+                                        jsonrpc: Version::V2,
+                                        method,
+                                        params,
+                                    }));
+                                if let Ok(message) = serde_json::to_string(&request) {
                                     rpc.rpc_query(&session, &message).await;
                                 }
+                            }
 
-                                FrontToBack::Request(RequestMessage {
-                                    raw: message,
-                                    send_back,
-                                    ..
-                                }) => {
+                            FrontToBack::StartRequest(RequestMessage {
+                                method,
+                                params,
+                                send_back,
+                            }) => {
+                                let request =
+                                    Request::Single(Call::MethodCall(MethodCall {
+                                        jsonrpc: Version::V2,
+                                        method: method.into(),
+                                        params: params.into(),
+                                        id: Id::Num(request_id),
+                                    }));
+                                if let Ok(message) = serde_json::to_string(&request) {
                                     if let Some(response) =
                                         rpc.rpc_query(&session, &message).await
                                     {
-                                        let result = if let Ok(success) =
-                                            serde_json::from_str::<
-                                                JsonRpcResponse<JsonValue>,
-                                            >(
-                                                &response
-                                            ) {
-                                            Ok(success.result)
-                                        } else if let Ok(failure) =
-                                            serde_json::from_str::<JsonRpcErrorAlloc>(
-                                                &response,
-                                            )
+                                        let result = match serde_json::from_str::<Output>(
+                                            &response,
+                                        )
+                                        .expect("failed to decode request response")
                                         {
-                                            Err(JsonRpseeError::Request(failure))
-                                        } else {
-                                            panic!("failed to decode message");
+                                            Output::Success(success) => {
+                                                Ok(success.result)
+                                            }
+                                            Output::Failure(failure) => {
+                                                Err(JsonRpseeError::Request(
+                                                    failure.error,
+                                                ))
+                                            }
                                         };
 
                                         send_back.map(|tx| {
@@ -170,106 +186,105 @@ impl SubxtClient {
                                         });
                                     }
                                 }
+                            }
 
-                                FrontToBack::Subscribe(SubscriptionMessage {
-                                    raw: message,
-                                    unsubscribe_method,
-                                    send_back,
-                                    subscribe_id: request_id,
-                                    unsubscribe_id,
-                                }) => {
-                                    {
-                                        let mut subscriptions =
-                                            subscriptions.write().await;
-                                        subscriptions.insert(
-                                            request_id,
-                                            (unsubscribe_id, unsubscribe_method),
-                                        );
-                                    }
+                            FrontToBack::Subscribe(SubscriptionMessage {
+                                subscribe_method,
+                                params,
+                                unsubscribe_method,
+                                send_back,
+                            }) => {
+                                {
+                                    let mut subscriptions = subscriptions.write().await;
+                                    subscriptions.insert(request_id, unsubscribe_method);
+                                }
 
-                                    let (mut send_front_sub, send_back_sub) =
-                                        mpsc::channel(DEFAULT_CHANNEL_SIZE);
+                                let request =
+                                    Request::Single(Call::MethodCall(MethodCall {
+                                        jsonrpc: Version::V2,
+                                        method: subscribe_method,
+                                        params,
+                                        id: Id::Num(request_id),
+                                    }));
 
+                                let (mut send_front_sub, send_back_sub) =
+                                    mpsc::channel(DEFAULT_CHANNEL_SIZE);
+                                if let Ok(message) = serde_json::to_string(&request) {
                                     if let Some(response) =
                                         rpc.rpc_query(&session, &message).await
                                     {
-                                        let result = if let Ok(_success) =
-                                            serde_json::from_str::<
-                                                JsonRpcResponse<JsonValue>,
-                                            >(
-                                                &response
-                                            ) {
-                                            Ok((
-                                                send_back_sub,
-                                                SubscriptionId::Num(request_id),
-                                            ))
-                                        } else if let Ok(failure) =
-                                            serde_json::from_str::<JsonRpcErrorAlloc>(
-                                                &response,
-                                            )
+                                        let result = match serde_json::from_str::<Output>(
+                                            &response,
+                                        )
+                                        .expect("failed to decode subscription response")
                                         {
-                                            Err(JsonRpseeError::Request(failure))
-                                        } else {
-                                            panic!("failed to decode message");
+                                            Output::Success(_) => {
+                                                Ok((
+                                                    send_back_sub,
+                                                    SubscriptionId::Num(request_id),
+                                                ))
+                                            }
+                                            Output::Failure(failure) => {
+                                                Err(JsonRpseeError::Request(
+                                                    failure.error,
+                                                ))
+                                            }
                                         };
 
                                         send_back.send(result).expect(
                                             "failed to send subscription response",
                                         );
                                     }
-
-                                    task::spawn(async move {
-                                        let mut from_back = from_back.compat();
-                                        let _session = session.clone();
-
-                                        while let Some(Ok(response)) =
-                                            from_back.next().await
-                                        {
-                                            let notif = serde_json::from_str::<
-                                                JsonRpcNotifResponse<JsonValue>,
-                                            >(
-                                                &response
-                                            )
-                                            .expect(
-                                                "failed to decode subscription notif",
-                                            );
-                                            // ignore send error since the channel is probably closed
-                                            let _ = send_front_sub
-                                                .send(notif.params.result)
-                                                .await;
-                                        }
-                                    });
                                 }
 
-                                FrontToBack::SubscriptionClosed(subscription_id) => {
-                                    let sub_id = if let SubscriptionId::Num(num) =
-                                        subscription_id
+                                task::spawn(async move {
+                                    let mut from_back = from_back.compat();
+                                    let _session = session.clone();
+
+                                    while let Some(Ok(response)) = from_back.next().await
                                     {
+                                        let notif = serde_json::from_str::<
+                                            SubscriptionNotif,
+                                        >(
+                                            &response
+                                        )
+                                        .expect("failed to decode subscription notif");
+                                        // ignore send error since the channel is probably closed
+                                        let _ = send_front_sub
+                                            .send(notif.params.result)
+                                            .await;
+                                    }
+                                });
+                            }
+
+                            FrontToBack::SubscriptionClosed(subscription_id) => {
+                                let sub_id =
+                                    if let SubscriptionId::Num(num) = subscription_id {
                                         num
                                     } else {
                                         unreachable!("subscription id should be num")
                                     };
-                                    let json_sub_id = to_json_value(sub_id).unwrap();
+                                let json_sub_id = jsonrpc::to_value(sub_id).unwrap();
 
-                                    let subscriptions = subscriptions.read().await;
-                                    if let Some((unsubscribe_id, unsubscribe_method)) =
-                                        subscriptions.get(&sub_id)
-                                    {
-                                        let raw =
-                                            serde_json::to_string(&JsonRpcCallSer::new(
-                                                Id::Number(*unsubscribe_id),
-                                                unsubscribe_method,
-                                                JsonRpcParams::Array(vec![json_sub_id]),
-                                            ))
-                                            .unwrap();
-
-                                        rpc.rpc_query(&session, &raw).await;
+                                let subscriptions = subscriptions.read().await;
+                                if let Some(unsubscribe) = subscriptions.get(&sub_id) {
+                                    let request =
+                                        Request::Single(Call::MethodCall(MethodCall {
+                                            jsonrpc: Version::V2,
+                                            method: unsubscribe.into(),
+                                            params: jsonrpc::Params::Array(vec![
+                                                json_sub_id,
+                                            ]),
+                                            id: Id::Num(request_id),
+                                        }));
+                                    if let Ok(message) = serde_json::to_string(&request) {
+                                        rpc.rpc_query(&session, &message).await;
                                     }
                                 }
                             }
                         }
-                    }),
-                ),
+                    }
+                })),
                 Box::pin(async move {
                     task_manager.future().await.ok();
                 }),
@@ -277,11 +292,7 @@ impl SubxtClient {
             .map(drop),
         );
 
-        let request_id = Arc::new(RwLock::new(u64::MIN));
-        Self {
-            to_back,
-            request_id,
-        }
+        Self { to_back }
     }
 
     /// Creates a new client from a config.
@@ -295,35 +306,27 @@ impl SubxtClient {
     }
 
     /// Send a JSONRPC notification.
-    pub async fn notification<'a, M, P>(
+    pub async fn notification<M, P>(
         &self,
         method: M,
         params: P,
     ) -> Result<(), JsonRpseeError>
     where
         M: Into<String> + Send,
-        P: Into<JsonRpcParams<'a>> + Send,
+        P: Into<jsonrpc::Params> + Send,
     {
-        let method = method.into();
-        let notif = JsonRpcNotificationSer::new(&method, params.into());
-        let raw = serde_json::to_string(&notif).unwrap();
-
         self.to_back
             .clone()
-            .send(FrontToBack::Notification(raw))
+            .send(FrontToBack::Notification(NotificationMessage {
+                method: method.into(),
+                params: params.into(),
+            }))
             .await
             .map_err(|e| JsonRpseeError::TransportError(Box::new(e)))
     }
 
-    async fn next_request_id(&self) -> u64 {
-        let mut prev_request_id = self.request_id.write().await;
-        let next_request_id = prev_request_id.clone();
-        *prev_request_id = prev_request_id.wrapping_add(1);
-        next_request_id
-    }
-
     /// Send a JSONRPC request.
-    pub async fn request<'a, T, M, P>(
+    pub async fn request<T, M, P>(
         &self,
         method: M,
         params: P,
@@ -331,26 +334,15 @@ impl SubxtClient {
     where
         T: DeserializeOwned,
         M: Into<String> + Send,
-        P: Into<JsonRpcParams<'a>> + Send,
+        P: Into<jsonrpc::Params> + Send,
     {
-        let method = method.into();
-        let params = params.into();
-
         let (send_back_tx, send_back_rx) = oneshot::channel();
-
-        let req_id = self.next_request_id().await;
-        let raw = serde_json::to_string(&JsonRpcCallSer::new(
-            Id::Number(req_id),
-            &method,
-            params,
-        ))
-        .unwrap();
 
         self.to_back
             .clone()
-            .send(FrontToBack::Request(RequestMessage {
-                raw,
-                id: req_id,
+            .send(FrontToBack::StartRequest(RequestMessage {
+                method: method.into(),
+                params: params.into(),
                 send_back: Some(send_back_tx),
             }))
             .await
@@ -361,11 +353,11 @@ impl SubxtClient {
             Ok(Err(err)) => return Err(err),
             Err(err) => return Err(JsonRpseeError::TransportError(Box::new(err))),
         };
-        serde_json::from_value(json_value).map_err(JsonRpseeError::ParseError)
+        jsonrpc::from_value(json_value).map_err(JsonRpseeError::ParseError)
     }
 
     /// Send a subscription request to the server.
-    pub async fn subscribe<'a, SM, UM, P, N>(
+    pub async fn subscribe<SM, UM, P, N>(
         &self,
         subscribe_method: SM,
         params: P,
@@ -374,31 +366,20 @@ impl SubxtClient {
     where
         SM: Into<String> + Send,
         UM: Into<String> + Send,
-        P: Into<JsonRpcParams<'a>> + Send,
+        P: Into<jsonrpc::Params> + Send,
         N: DeserializeOwned,
     {
         let subscribe_method = subscribe_method.into();
         let unsubscribe_method = unsubscribe_method.into();
         let params = params.into();
 
-        let subscribe_id = self.next_request_id().await;
-        let unsubscribe_id = self.next_request_id().await;
-
-        let raw = serde_json::to_string(&JsonRpcCallSer::new(
-            Id::Number(subscribe_id),
-            &subscribe_method,
-            params,
-        ))
-        .unwrap();
-
         let (send_back_tx, send_back_rx) = oneshot::channel();
         self.to_back
             .clone()
             .send(FrontToBack::Subscribe(SubscriptionMessage {
-                raw,
-                subscribe_id,
-                unsubscribe_id,
+                subscribe_method,
                 unsubscribe_method,
+                params,
                 send_back: send_back_tx,
             }))
             .await
@@ -501,6 +482,7 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
             keep_blocks: sc_service::KeepBlocks::All,
             transaction_storage: sc_service::TransactionStorageMode::BlockBody,
             wasm_runtime_overrides: None,
+            telemetry_handle: None,
             disable_log_reloading: false,
             network,
             impl_name: self.impl_name.to_string(),
