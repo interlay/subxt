@@ -34,17 +34,19 @@ use frame_metadata::RuntimeMetadataPrefixed;
 use jsonrpsee_http_client::HttpClient;
 use jsonrpsee_types::{
     error::Error as RpcError,
-    to_json_value,
+    jsonrpc::{
+        to_value as to_json_value,
+        DeserializeOwned,
+        Params,
+    },
     traits::{
         Client,
         SubscriptionClient,
     },
-    v2::params::JsonRpcParams as Params,
-    DeserializeOwned,
 };
 use jsonrpsee_ws_client::{
-    Subscription,
     WsClient,
+    WsSubscription as Subscription,
 };
 use serde::{
     Deserialize,
@@ -174,10 +176,10 @@ pub enum RpcClient {
 
 impl RpcClient {
     /// Start a JSON-RPC request.
-    pub async fn request<'a, T: DeserializeOwned>(
+    pub async fn request<T: DeserializeOwned>(
         &self,
-        method: &'a str,
-        params: Params<'a>,
+        method: &str,
+        params: Params,
     ) -> Result<T, Error> {
         match self {
             Self::WebSocket(inner) => {
@@ -190,11 +192,11 @@ impl RpcClient {
     }
 
     /// Start a JSON-RPC Subscription.
-    pub async fn subscribe<'a, T: DeserializeOwned>(
+    pub async fn subscribe<T: DeserializeOwned>(
         &self,
-        subscribe_method: &'a str,
-        params: Params<'a>,
-        unsubscribe_method: &'a str,
+        subscribe_method: &str,
+        params: Params,
+        unsubscribe_method: &str,
     ) -> Result<Subscription<T>, Error> {
         match self {
             Self::WebSocket(inner) => {
@@ -380,7 +382,7 @@ impl<T: Runtime> Rpc<T> {
     pub async fn metadata(&self) -> Result<Metadata, Error> {
         let bytes: Bytes = self
             .client
-            .request("state_getMetadata", Params::NoParams)
+            .request("state_getMetadata", Params::None)
             .await?;
         let meta: RuntimeMetadataPrefixed = Decode::decode(&mut &bytes[..])?;
         let metadata: Metadata = meta.try_into()?;
@@ -391,7 +393,7 @@ impl<T: Runtime> Rpc<T> {
     pub async fn system_properties(&self) -> Result<SystemProperties, Error> {
         Ok(self
             .client
-            .request("system_properties", Params::NoParams)
+            .request("system_properties", Params::None)
             .await?)
     }
 
@@ -423,7 +425,7 @@ impl<T: Runtime> Rpc<T> {
     pub async fn finalized_head(&self) -> Result<T::Hash, Error> {
         let hash = self
             .client
-            .request("chain_getFinalizedHead", Params::NoParams)
+            .request("chain_getFinalizedHead", Params::None)
             .await?;
         Ok(hash)
     }
@@ -495,7 +497,7 @@ impl<T: Runtime> Rpc<T> {
             .client
             .subscribe(
                 "chain_subscribeNewHeads",
-                Params::NoParams,
+                Params::None,
                 "chain_unsubscribeNewHeads",
             )
             .await?;
@@ -511,7 +513,7 @@ impl<T: Runtime> Rpc<T> {
             .client
             .subscribe(
                 "chain_subscribeFinalizedHeads",
-                Params::NoParams,
+                Params::None,
                 "chain_unsubscribeFinalizedHeads",
             )
             .await?;
@@ -664,7 +666,7 @@ impl<T: Runtime> Rpc<T> {
     pub async fn rotate_keys(&self) -> Result<Bytes, Error> {
         Ok(self
             .client
-            .request("author_rotateKeys", Params::NoParams)
+            .request("author_rotateKeys", Params::None)
             .await?)
     }
 
