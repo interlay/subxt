@@ -444,7 +444,6 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
             keep_blocks: sc_service::KeepBlocks::All,
             transaction_storage: sc_service::TransactionStorageMode::BlockBody,
             wasm_runtime_overrides: None,
-            telemetry_handle: None,
             disable_log_reloading: false,
             network,
             impl_name: self.impl_name.to_string(),
