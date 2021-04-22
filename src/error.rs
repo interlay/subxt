@@ -114,6 +114,9 @@ pub enum RuntimeError {
     /// Other error.
     #[error("Other error: {0}")]
     Other(String),
+    /// Token error.
+    #[error("Token error.")]
+    TokenError,
 }
 
 impl RuntimeError {
@@ -140,6 +143,7 @@ impl RuntimeError {
             DispatchError::ConsumerRemaining => Ok(Self::ConsumerRemaining),
             DispatchError::NoProviders => Ok(Self::NoProviders),
             DispatchError::Other(msg) => Ok(Self::Other(msg.into())),
+            DispatchError::Token(_) => Ok(Self::TokenError),
         }
     }
 }
