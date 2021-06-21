@@ -38,27 +38,27 @@ url = "2.2.1"
 codec = { package = "parity-scale-codec", version = "2.1", default-features = false, features = ["derive", "full"] }
 dyn-clone = "1.0.4"
 
-frame-metadata = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
-frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
-sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
-sp-version = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
-pallet-indices = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
+frame-metadata = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
+frame-support = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
+sp-runtime = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
+sp-version = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
+pallet-indices = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
 hex = "0.4.3"
-sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
-application-crypto = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1", package = "sp-application-crypto" }
-pallet-staking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
+sp-std = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
+application-crypto = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5", package = "sp-application-crypto" }
+pallet-staking = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
 
-sp-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1", package = "sp-rpc" }
-sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1", package = "sp-core" }
+sp-rpc = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5", package = "sp-rpc" }
+sp-core = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5", package = "sp-core" }
 substrate-subxt-client = { version = "0.7.0", path = "client", optional = true }
 substrate-subxt-proc-macro = { version = "0.15.0", path = "proc-macro" }
 
 [dev-dependencies]
 async-std = { version = "1.9.0", features = ["attributes"] }
 env_logger = "0.8.3"
-frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
-pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
-sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.1" }
+frame-system = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
+pallet-balances = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
+sp-keyring = { git = "https://github.com/paritytech/substrate", branch = "polkadot-v0.9.5" }
 tempdir = "0.3.7"
 wabt = "0.10.0"
 which = "4.0.2"
