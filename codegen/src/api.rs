@@ -356,7 +356,7 @@ impl RuntimeGenerator {
                         )
                     })
                     .iter()
-                    .map(|(name, ty)| (quote!( #name: #ty ), name))
+                    .map(|(name, ty)| (quote!( #name: impl Into< #ty > ), quote!( #name )))
                     .unzip();
 
                 let pallet_name = &pallet.name;
