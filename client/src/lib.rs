@@ -445,7 +445,8 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
 
             // rpc_http_threads: Default::default(),
             rpc_max_payload: Default::default(),
-            ws_max_out_buffer_capacity: Default::default(),
+            disable_log_reloading: Default::default()
+            // ws_max_out_buffer_capacity: Default::default(),
         };
 
         log::info!("{}", service_config.impl_name);

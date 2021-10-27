@@ -44,10 +44,10 @@ url = "2.2.1"
 subxt-macro = { version = "0.1.0", path = "macro" }
 subxt-client = { version = "0.1.0", path = "client" }
 
-sp-arithmetic = { package = "sp-arithmetic", git = "https://github.com/paritytech/substrate/", branch = "master" }
-sp-core = { package = "sp-core", git = "https://github.com/paritytech/substrate/", branch = "master" }
-sp-runtime = { package = "sp-runtime", git = "https://github.com/paritytech/substrate/", branch = "master" }
-sp-version = { package = "sp-version", git = "https://github.com/paritytech/substrate/", branch = "master" }
+sp-arithmetic = { package = "sp-arithmetic", git = "https://github.com/paritytech/substrate/", branch = "polkadot-v0.9.11" }
+sp-core = { package = "sp-core", git = "https://github.com/paritytech/substrate/", branch = "polkadot-v0.9.11" }
+sp-runtime = { package = "sp-runtime", git = "https://github.com/paritytech/substrate/", branch = "polkadot-v0.9.11" }
+sp-version = { package = "sp-version", git = "https://github.com/paritytech/substrate/", branch = "polkadot-v0.9.11" }
 
 frame-metadata = "14.0.0"
 
@@ -59,5 +59,5 @@ tempdir = "0.3.7"
 wabt = "0.10.0"
 which = "4.0.2"
 
-sp-keyring = { package = "sp-keyring", git = "https://github.com/paritytech/substrate/", branch = "master" }
+sp-keyring = { package = "sp-keyring", git = "https://github.com/paritytech/substrate/", branch = "polkadot-v0.9.11" }
 
