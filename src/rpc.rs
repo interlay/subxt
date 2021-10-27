@@ -92,6 +92,8 @@ use crate::{
     Metadata,
 };
 
+use subxt_client::SubxtClient;
+
 /// A number type that can be serialized both as a number or a string that encodes a number in a
 /// string.
 ///
@@ -193,6 +195,8 @@ pub enum RpcClient {
     /// JSONRPC client HTTP transport.
     // NOTE: Arc because `HttpClient` is not clone.
     Http(Arc<HttpClient>),
+    /// Embedded substrate node.
+    Subxt(SubxtClient),
 }
 
 impl RpcClient {
@@ -227,6 +231,7 @@ impl RpcClient {
                 inner.request(method, params).await.map_err(Into::into)
             }
             Self::Http(inner) => inner.request(method, params).await.map_err(Into::into),
+            Self::Subxt(inner) => inner.request(method, params).await.map_err(Into::into),
         };
         data
     }
@@ -251,6 +256,12 @@ impl RpcClient {
                     "Subscriptions not supported on HTTP transport".to_owned(),
                 )
                 .into())
+            }
+            Self::Subxt(inner) => {
+                inner
+                    .subscribe(subscribe_method, params, unsubscribe_method)
+                    .await
+                    .map_err(Into::into)
             }
         }
     }
