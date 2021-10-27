@@ -24,12 +24,10 @@ use async_std::{
 };
 use futures::{
     channel::{mpsc, oneshot},
-    compat::Stream01CompatExt,
     future::{select, FutureExt},
     sink::SinkExt,
     stream::StreamExt,
 };
-use futures01::sync::mpsc as mpsc01;
 use jsonrpsee_types::{
     v2::{
         error::{JsonRpcError, JsonRpcErrorCode},
@@ -47,11 +45,11 @@ use jsonrpsee_types::{
 };
 use sc_network::config::TransportConfig;
 pub use sc_service::{
-    config::{DatabaseConfig, KeystoreConfig, WasmExecutionMethod},
+    config::{DatabaseSource, KeystoreConfig, WasmExecutionMethod},
     Error as ServiceError,
 };
 use sc_service::{
-    config::{NetworkConfiguration, TaskType, TelemetryEndpoints},
+    config::{NetworkConfiguration, TelemetryEndpoints},
     ChainSpec, Configuration, KeepBlocks, RpcHandlers, RpcSession, TaskManager,
 };
 use std::{
@@ -91,7 +89,7 @@ impl SubxtClient {
             select(
                 Box::pin(from_front.for_each(move |message: FrontToBack| {
                     let rpc = rpc.clone();
-                    let (to_front, from_back) = mpsc01::channel(DEFAULT_CHANNEL_SIZE);
+                    let (to_front, mut from_back) = mpsc::unbounded();
                     let session = RpcSession::new(to_front.clone());
 
                     let subscriptions = subscriptions.clone();
@@ -161,10 +159,10 @@ impl SubxtClient {
                                 }
 
                                 task::spawn(async move {
-                                    let mut from_back = from_back.compat();
+                                    // let mut from_back = from_back.compat();
                                     let _session = session.clone();
 
-                                    while let Some(Ok(response)) = from_back.next().await
+                                    while let Some(response) = from_back.next().await
                                     {
                                         let notif = serde_json::from_str::<
                                             JsonRpcNotification<
@@ -358,7 +356,7 @@ pub struct SubxtClientConfig<C: ChainSpec + 'static> {
     /// Copyright start year.
     pub copyright_start_year: i32,
     /// Database configuration.
-    pub db: DatabaseConfig,
+    pub db: DatabaseSource,
     /// Keystore configuration.
     pub keystore: KeystoreConfig,
     /// Chain specification.
@@ -369,6 +367,8 @@ pub struct SubxtClientConfig<C: ChainSpec + 'static> {
     pub telemetry: Option<u16>,
     /// Wasm execution method
     pub wasm_method: WasmExecutionMethod,
+	/// Handle to the tokio runtime. Will be used to spawn futures by the task manager.
+    pub tokio_handle: tokio::runtime::Handle,
 }
 
 impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
@@ -384,7 +384,7 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
         network.transport = TransportConfig::Normal {
             enable_mdns: true,
             allow_private_ipv4: true,
-            wasm_external_transport: None,
+            // wasm_external_transport: None,
         };
         let telemetry_endpoints = if let Some(port) = self.telemetry {
             let endpoints = TelemetryEndpoints::new(vec![(
@@ -402,22 +402,23 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
             impl_version: self.impl_version.to_string(),
             chain_spec: Box::new(self.chain_spec),
             role: self.role.into(),
-            task_executor: (move |fut, ty| match ty {
-                TaskType::Async => task::spawn(fut),
-                TaskType::Blocking => task::spawn_blocking(|| task::block_on(fut)),
-            })
-            .into(),
+            // task_executor: (move |fut, ty| match ty {
+            //     TaskType::Async => task::spawn(fut),
+            //     TaskType::Blocking => task::spawn_blocking(|| task::block_on(fut)),
+            // })
+            // .into(),
             database: self.db,
             keystore: self.keystore,
             max_runtime_instances: 8,
             announce_block: true,
             dev_key_seed: self.role.into(),
             telemetry_endpoints,
+            tokio_handle: self.tokio_handle,
 
-            telemetry_external_transport: Default::default(),
+            // telemetry_external_transport: Default::default(),
             default_heap_pages: Default::default(),
             disable_grandpa: Default::default(),
-            disable_log_reloading: Default::default(),
+            // disable_log_reloading: Default::default(),
             execution_strategies: Default::default(),
             force_authoring: Default::default(),
             keep_blocks: KeepBlocks::All,
@@ -442,8 +443,9 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
             transaction_storage: sc_client_db::TransactionStorageMode::BlockBody,
             wasm_runtime_overrides: Default::default(),
 
-            rpc_http_threads: Default::default(),
+            // rpc_http_threads: Default::default(),
             rpc_max_payload: Default::default(),
+            ws_max_out_buffer_capacity: Default::default(),
         };
 
         log::info!("{}", service_config.impl_name);

@@ -28,6 +28,8 @@ sp-keyring = { git = "https://github.com/paritytech/substrate.git", branch = "ma
 sc-network = { git = "https://github.com/paritytech/substrate.git", branch = "master", default-features = false }
 sc-service = { git = "https://github.com/paritytech/substrate.git", branch = "master", default-features = false }
 
+tokio = { version = "1.10", features = ["time", "rt-multi-thread"] }
+
 [target.'cfg(target_arch="x86_64")'.dependencies]
 sc-service = { git = "https://github.com/paritytech/substrate.git", branch = "master", default-features = false, features = [
     "wasmtime",
