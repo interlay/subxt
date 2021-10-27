@@ -291,6 +291,12 @@ impl From<Arc<HttpClient>> for RpcClient {
     }
 }
 
+impl From<SubxtClient> for RpcClient {
+    fn from(client: SubxtClient) -> Self {
+        RpcClient::Subxt(client)
+    }
+}
+
 /// ReadProof struct returned by the RPC
 ///
 /// # Note
