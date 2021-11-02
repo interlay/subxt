@@ -14,22 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with subxt.  If not, see <http://www.gnu.org/licenses/>.
 
-use color_eyre::eyre::{
-    self,
-    WrapErr,
-};
+use color_eyre::eyre::{self, WrapErr};
 use frame_metadata::RuntimeMetadataPrefixed;
-use scale::{
-    Decode,
-    Input,
-};
+use scale::{Decode, Input};
 use std::{
     fs,
-    io::{
-        self,
-        Read,
-        Write,
-    },
+    io::{self, Read, Write},
     path::PathBuf,
 };
 use structopt::StructOpt;
@@ -94,12 +84,10 @@ fn main() -> color_eyre::Result<()> {
                     Ok(())
                 }
                 "bytes" => Ok(io::stdout().write_all(&bytes)?),
-                _ => {
-                    Err(eyre::eyre!(
-                        "Unsupported format `{}`, expected `json`, `hex` or `bytes`",
-                        format
-                    ))
-                }
+                _ => Err(eyre::eyre!(
+                    "Unsupported format `{}`, expected `json`, `hex` or `bytes`",
+                    format
+                )),
             }
         }
         Command::Codegen { url, file } => {
@@ -112,7 +100,7 @@ fn main() -> color_eyre::Result<()> {
                 let mut bytes = Vec::new();
                 file.read_to_end(&mut bytes)?;
                 codegen(&mut &bytes[..])?;
-                return Ok(())
+                return Ok(());
             }
 
             let url = url.unwrap_or_else(|| {
@@ -120,7 +108,7 @@ fn main() -> color_eyre::Result<()> {
             });
             let (_, bytes) = fetch_metadata(&url)?;
             codegen(&mut &bytes[..])?;
-            return Ok(())
+            return Ok(());
         }
     }
 }

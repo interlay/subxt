@@ -31,15 +31,9 @@ const SUBSTRATE_NODE_PATH: &str = "substrate";
 pub async fn test_node_process_with(
     key: AccountKeyring,
 ) -> TestNodeProcess<DefaultConfig> {
-    let path = std::env::var("SUBSTRATE_NODE_PATH").unwrap_or_else(|_| {
-        if which::which(SUBSTRATE_NODE_PATH).is_err() {
-            panic!("A substrate binary should be installed on your path for integration tests. \
-            See https://github.com/paritytech/subxt/tree/master#integration-testing")
-        }
-        SUBSTRATE_NODE_PATH.to_string()
-    });
+    let path = "/home/sander/workspace/interlay/parity/subxt/substrate";
 
-    let proc = TestNodeProcess::<DefaultConfig>::build(path.as_str())
+    let proc = TestNodeProcess::<DefaultConfig>::build(path)
         .with_authority(key)
         .scan_for_open_ports()
         .spawn::<DefaultConfig>()
