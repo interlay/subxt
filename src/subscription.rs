@@ -14,9 +14,15 @@
 // You should have received a copy of the GNU General Public License
 // along with subxt.  If not, see <http://www.gnu.org/licenses/>.
 
-use jsonrpsee_types::{DeserializeOwned, Subscription};
+use jsonrpsee_types::{
+    DeserializeOwned,
+    Subscription,
+};
 use sp_core::{
-    storage::{StorageChangeSet, StorageKey},
+    storage::{
+        StorageChangeSet,
+        StorageKey,
+    },
     twox_128,
 };
 use sp_runtime::traits::Header;
@@ -24,9 +30,15 @@ use std::collections::VecDeque;
 
 use crate::{
     error::Error,
-    events::{EventsDecoder, Raw, RawEvent},
+    events::{
+        EventsDecoder,
+        Raw,
+        RawEvent,
+    },
     rpc::Rpc,
-    Config, Event, Phase,
+    Config,
+    Event,
+    Phase,
 };
 
 /// Event subscription simplifies filtering a storage change set stream for
@@ -120,7 +132,7 @@ impl<'a, T: Config> EventSubscription<'a, T> {
                 };
             }
             if self.finished {
-                return None;
+                return None
             }
             // always return None if subscription has closed
             let (received_hash, events) = self.block_reader.next().await?;
@@ -128,7 +140,7 @@ impl<'a, T: Config> EventSubscription<'a, T> {
                 if &received_hash == hash {
                     self.finished = true;
                 } else {
-                    continue;
+                    continue
                 }
             }
 
@@ -136,22 +148,20 @@ impl<'a, T: Config> EventSubscription<'a, T> {
                 Err(err) => return Some(Err(err)),
                 Ok(raw_events) => {
                     for (phase, raw) in raw_events {
-                        if let Phase::ApplyExtrinsic(i) = phase {
-                            if let Some(ext_index) = self.extrinsic {
-                                if i as usize != ext_index {
-                                    continue;
-                                }
+                        if let Some(ext_index) = self.extrinsic {
+                            if !matches!(phase, Phase::ApplyExtrinsic(i) if i as usize == ext_index)
+                            {
+                                continue
                             }
-                            if let Some((module, variant)) = self.event {
-                                if let Raw::Event(ref event) = raw {
-                                    if event.pallet != module || event.variant != variant
-                                    {
-                                        continue;
-                                    }
-                                }
-                            }
-                            self.events.push_back(raw);
                         }
+                        if let Some((module, variant)) = self.event {
+                            if let Raw::Event(ref event) = raw {
+                                if event.pallet != module || event.variant != variant {
+                                    continue
+                                }
+                            }
+                        }
+                        self.events.push_back(raw);
                     }
                 }
             }
@@ -199,7 +209,7 @@ impl<T: Config> FinalizedEventStorageSubscription<T> {
     pub async fn next(&mut self) -> Option<StorageChangeSet<T::Hash>> {
         loop {
             if let Some(storage_change) = self.storage_changes.pop_front() {
-                return Some(storage_change);
+                return Some(storage_change)
             }
             let header: T::Header =
                 read_subscription_response("HeaderSubscription", &mut self.subscription)
@@ -337,7 +347,12 @@ mod tests {
         let mut events = vec![];
         // create all events
         for block_hash in [H256::from([0; 32]), H256::from([1; 32])] {
-            for phase in [Phase::ApplyExtrinsic(0), Phase::ApplyExtrinsic(1)] {
+            for phase in [
+                Phase::Initialization,
+                Phase::ApplyExtrinsic(0),
+                Phase::ApplyExtrinsic(1),
+                Phase::Finalization,
+            ] {
                 for event in [named_event("a"), named_event("b")] {
                     events.push((block_hash, phase.clone(), event))
                 }
@@ -347,6 +362,8 @@ mod tests {
         events.iter_mut().enumerate().for_each(|(idx, event)| {
             event.2.variant_index = idx as u8;
         });
+
+        let half_len = events.len() / 2;
 
         for block_filter in [None, Some(H256::from([1; 32]))] {
             for extrinsic_filter in [None, Some(1)] {
@@ -359,18 +376,17 @@ mod tests {
                                         events[0].0,
                                         Ok(events
                                             .iter()
-                                            .take(4)
+                                            .take(half_len)
                                             .map(|(_, phase, event)| {
                                                 (phase.clone(), Raw::Event(event.clone()))
                                             })
                                             .collect()),
                                     ),
                                     (
-                                        events[4].0,
+                                        events[half_len].0,
                                         Ok(events
                                             .iter()
-                                            .skip(4)
-                                            .take(4)
+                                            .skip(half_len)
                                             .map(|(_, phase, event)| {
                                                 (phase.clone(), Raw::Event(event.clone()))
                                             })
@@ -395,6 +411,7 @@ mod tests {
                     if let Some(name) = event_filter {
                         expected_events.retain(|(_, _, event)| event.pallet == name.0);
                     }
+
                     for expected_event in expected_events {
                         assert_eq!(
                             subscription.next().await.unwrap().unwrap(),
