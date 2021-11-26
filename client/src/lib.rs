@@ -79,20 +79,21 @@ pub use sc_service::{
         KeystoreConfig,
         WasmExecutionMethod,
     },
+    ChainSpec,
     Error as ServiceError,
+    RpcHandlers,
+    TaskManager,
 };
 use sc_service::{
     config::{
         NetworkConfiguration,
         TelemetryEndpoints,
     },
-    ChainSpec,
     Configuration,
     KeepBlocks,
-    RpcHandlers,
     RpcSession,
-    TaskManager,
 };
+pub use sp_keyring::AccountKeyring;
 use std::{
     collections::HashMap,
     sync::atomic::{
@@ -365,7 +366,7 @@ pub enum Role {
     /// Light client.
     Light,
     /// A full node (mainly used for testing purposes).
-    Authority(sp_keyring::AccountKeyring),
+    Authority(AccountKeyring),
 }
 
 impl From<Role> for sc_service::Role {
