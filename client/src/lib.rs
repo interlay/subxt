@@ -40,7 +40,7 @@ use futures::{
     sink::SinkExt,
     stream::StreamExt,
 };
-use jsonrpsee_types::{
+use jsonrpsee::types::{
     v2::{
         error::{
             ErrorCode,
