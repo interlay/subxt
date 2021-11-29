@@ -596,7 +596,7 @@ impl<T: Config> Rpc<T> {
         decoder: &'a EventsDecoder<T>,
     ) -> Result<ExtrinsicSuccess<T>, Error> {
         let ext_hash = T::Hashing::hash_of(&extrinsic);
-        log::info!("Submitting Extrinsic `{:?}`", ext_hash);
+        log::info!("Submitting Extrinsic `{:?}`, {:x?}", ext_hash, extrinsic.encode());
 
         let events_sub = if self.accept_weak_inclusion {
             self.subscribe_events().await
