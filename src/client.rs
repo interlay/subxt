@@ -17,6 +17,9 @@ use futures::future;
 pub use sp_runtime::traits::SignedExtension;
 pub use sp_version::RuntimeVersion;
 
+use codec::{
+    Encode,
+};
 use crate::{
     events::EventsDecoder,
     extrinsic::{
@@ -266,6 +269,7 @@ where
             .metadata()
             .pallet(C::PALLET)
             .and_then(|pallet| pallet.encode_call(&self.call))?;
+        log::info!("Call: {:x?}", call.encode());
 
         let signed = extrinsic::create_signed(
             &self.client.runtime_version,
