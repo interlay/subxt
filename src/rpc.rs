@@ -605,6 +605,9 @@ impl<T: Config> Rpc<T> {
         } else {
             self.subscribe_finalized_events().await
         }?;
+
+        tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+        
         let mut xt_sub = self.watch_extrinsic(extrinsic).await?;
 
         while let Ok(Some(status)) = xt_sub.next().await {
