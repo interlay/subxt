@@ -204,13 +204,13 @@ where
             TypeDef::Variant(variant) => {
                 let variant_index = u8::decode(input)?;
                 variant_index.encode_to(output);
-                let variant =
-                    variant
-                        .variants()
-                        .get(variant_index as usize)
-                        .ok_or_else(|| {
-                            Error::Other(format!("Variant {} not found", variant_index))
-                        })?;
+                let variant = variant
+                    .variants()
+                    .iter()
+                    .find(|v| v.index() == variant_index)
+                    .ok_or_else(|| {
+                        Error::Other(format!("Variant {} not found", variant_index))
+                    })?;
                 for field in variant.fields() {
                     self.decode_type(field.ty().id(), input, output)?;
                 }
