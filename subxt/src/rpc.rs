@@ -21,6 +21,9 @@
 // Related: https://github.com/paritytech/subxt/issues/66
 #![allow(irrefutable_let_patterns)]
 
+#[cfg(feature = "client")]
+use subxt_client::SubxtClient;
+
 use std::{
     collections::HashMap,
     sync::Arc,
@@ -202,6 +205,9 @@ pub enum RpcClient {
     /// JSONRPC client HTTP transport.
     // NOTE: Arc because `HttpClient` is not clone.
     Http(Arc<HttpClient>),
+    /// Embedded substrate node.
+    #[cfg(feature = "client")]
+    Subxt(SubxtClient),
 }
 
 impl RpcClient {
@@ -234,6 +240,8 @@ impl RpcClient {
         let data = match self {
             RpcClient::WebSocket(inner) => inner.request(method, params).await,
             RpcClient::Http(inner) => inner.request(method, params).await,
+            #[cfg(feature = "client")]
+            Self::Subxt(inner) => inner.request(method, params).await.map_err(Into::into),
         };
         log::debug!("response: {:?}", data);
         data
@@ -257,6 +265,13 @@ impl RpcClient {
                 Err(RpcError::Custom(
                     "Subscriptions not supported on HTTP transport".to_owned(),
                 ))
+            }
+            #[cfg(feature = "client")]
+            Self::Subxt(inner) => {
+                inner
+                    .subscribe(subscribe_method, params, unsubscribe_method)
+                    .await
+                    .map_err(Into::into)
             }
         }
     }
@@ -283,6 +298,13 @@ impl From<HttpClient> for RpcClient {
 impl From<Arc<HttpClient>> for RpcClient {
     fn from(client: Arc<HttpClient>) -> Self {
         RpcClient::Http(client)
+    }
+}
+
+#[cfg(feature = "client")]
+impl From<SubxtClient> for RpcClient {
+    fn from(client: SubxtClient) -> Self {
+        RpcClient::Subxt(client)
     }
 }
 

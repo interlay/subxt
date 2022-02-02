@@ -12,6 +12,10 @@ homepage = "https://www.parity.io/"
 description = "Submit extrinsics (transactions) to a substrate node via RPC"
 keywords = ["parity", "substrate", "blockchain"]
 
+[features]
+default = ["client"]
+client = ["subxt-client"]
+
 [dependencies]
 async-trait = "0.1.49"
 bitvec = { version = "0.20.1", default-features = false, features = ["alloc"] }
@@ -29,6 +33,7 @@ thiserror = "1.0.24"
 url = "2.2.1"
 
 subxt-macro = { version = "0.16.0", path = "../macro" }
+subxt-client = { version = "0.1.0", path = "../client", optional = true }
 
 sp-core = { version = "4.0.0", default-features = false  }
 sp-runtime = { version = "4.0.0", default-features = false }
