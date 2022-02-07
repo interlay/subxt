@@ -470,6 +470,7 @@ impl<C: ChainSpec + 'static> SubxtClientConfig<C> {
             wasm_runtime_overrides: Default::default(),
             rpc_max_payload: Default::default(),
             ws_max_out_buffer_capacity: Default::default(),
+            runtime_cache_size: Default::default(),
         };
 
         log::info!("{}", service_config.impl_name);
