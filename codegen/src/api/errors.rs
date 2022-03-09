@@ -81,7 +81,7 @@ pub fn generate_error_details(metadata: &RuntimeMetadataV14) -> ErrorDetails {
         },
         dispatch_error_impl_fn: quote! {
             pub fn details(&self) -> Option<ErrorDetails> {
-                if let Self::Module { index, error } = self {
+                if let Self::Module(self::runtime_types::sp_runtime::ModuleError { index, error }) = self {
                     match (index, error) {
                         #( #match_body_items ),*,
                         _ => None
