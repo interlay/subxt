@@ -9,6 +9,7 @@ use codec::Decode;
 use core::fmt::Debug;
 use scale_info::TypeDef;
 use std::borrow::Cow;
+use crate::rpc::jsonrpsee_impl::JsonRpseeError;
 
 // Re-expose the errors we use from other crates here:
 pub use crate::metadata::{
@@ -112,7 +113,7 @@ pub enum RpcError {
     // Dev note: We need the error to be safely sent between threads
     // for `subscribe_to_block_headers_filling_in_gaps` and friends.
     /// Error related to the RPC client.
-    ClientError(Box<dyn std::error::Error + Send + Sync + 'static>),
+    ClientError(#[from] JsonRpseeError),
     /// The RPC subscription dropped.
     SubscriptionDropped,
 }

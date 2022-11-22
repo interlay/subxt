@@ -52,8 +52,8 @@
 // with other file names for their types.
 #![allow(clippy::module_inception)]
 
-#[cfg(feature = "jsonrpsee")]
-mod jsonrpsee_impl;
+#[allow(missing_docs)]
+pub mod jsonrpsee_impl;
 
 mod rpc;
 mod rpc_client;

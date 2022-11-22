@@ -19,10 +19,10 @@ use jsonrpsee::core::{
         SubscriptionClientT,
     },
     traits::ToRpcParams,
-    Error as JsonRpseeError,
 };
 use serde_json::value::RawValue;
-
+pub use jsonrpsee::core::{Error as JsonRpseeError,
+};
 struct Params(Option<Box<RawValue>>);
 
 impl ToRpcParams for Params {
@@ -39,8 +39,7 @@ impl RpcClientT for Client {
     ) -> RpcFuture<'a, Box<RawValue>> {
         Box::pin(async move {
             let res = ClientT::request(self, method, Params(params))
-                .await
-                .map_err(|e| RpcError::ClientError(Box::new(e)))?;
+                .await?;
             Ok(res)
         })
     }
@@ -59,8 +58,8 @@ impl RpcClientT for Client {
                 unsub,
             )
             .await
-            .map_err(|e| RpcError::ClientError(Box::new(e)))?
-            .map_err(|e| RpcError::ClientError(Box::new(e)))
+            .map_err(|e| RpcError::ClientError(e))?
+            .map_err(|e| RpcError::ClientError(e))
             .boxed();
             Ok(sub)
         })

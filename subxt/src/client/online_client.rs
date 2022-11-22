@@ -77,7 +77,7 @@ impl<T: Config> OnlineClient<T> {
     pub async fn from_url(url: impl AsRef<str>) -> Result<OnlineClient<T>, Error> {
         let client = jsonrpsee_helpers::client(url.as_ref())
             .await
-            .map_err(|e| crate::error::RpcError::ClientError(Box::new(e)))?;
+            .map_err(|e| crate::error::RpcError::ClientError(e))?;
         OnlineClient::from_rpc_client(Arc::new(client)).await
     }
 }
